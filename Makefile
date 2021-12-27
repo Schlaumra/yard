@@ -5,5 +5,8 @@ test: tests tests/test.py
 	python tests/test.py
 
 develop: main.py
-	python main.py
+	python ./server.py
+
+client: main.py
+	python ./client.py
 
