@@ -1,0 +1,25 @@
+{
+  "server": {
+    "hostname": "192.168.73.152",
+    "port": 13331,
+    "udp_port": 13333,
+    "id_len": 8,
+    "password_len": 10,
+    "ssl": {
+        "email_address": "",
+        "country_name": "IT",
+        "locality_name": "Bruneck",
+        "state_or_province_name": "BZ",
+        "organization_name": "YARD",
+        "organization_unit_name": "",
+        "validity_start_in_seconds": 0,
+        "validity_end_in_seconds": 315360000,
+        "key_file": "private.key",
+        "cert_file": "cert.pem"
+    }
+  },
+  "client": {},
+  "transmission": {
+    "buffer": 55500
+  }
+}
