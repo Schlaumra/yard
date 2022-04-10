@@ -1,5 +1,6 @@
-PyAutoGUI==0.9.53
-mss==6.1.0
-numpy==1.22.3
-Pillow==9.0.1
-pyOpenSSL==22.0.0
+mss>=6.1.0
+numpy>=1.22.3
+Pillow>=9.0.1
+pyOpenSSL>=22.0.0
+opencv-python>=4.5.5.62
+pynput>=1.7.6

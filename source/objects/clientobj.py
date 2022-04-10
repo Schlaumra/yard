@@ -1,3 +1,4 @@
+import json
 import logging
 import socket
 import uuid
@@ -24,8 +25,8 @@ class ClientObj:
     :param sock: socket.socket(Optional): If the client is connected then sock is the current socket
     :raises ValueError: If you pass the wrong format of the client_id or fingerprint an error will be raised.
     """
-
-    id_len: int = 2
+    conf = json.load(open('settings/conf.json'))['server']
+    id_len: int = conf['id_len']
 
     client_id: str = None
     fingerprint: uuid.UUID = None

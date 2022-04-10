@@ -1,11 +1,8 @@
-import base64
-import hashlib
-import math
-import struct
-import threading
-import socket
 import json
 import logging
+import pickle
+import socket
+import threading
 import time
 import uuid
 from typing import Tuple, Any
@@ -18,9 +15,12 @@ from PIL import ImageTk, Image
 from display.mainwindow import MainWindow
 from objects import secret
 from objects.connectionobj import ConnectionObj
+from objects.inputobj import Input, Key, Mouse
 from objects.storage import ConnectionStorage
 from protocol.yardclient import YardClient
 from protocol.yardtransmission import YardTransmission
+from pynput.keyboard import Controller as KeyController
+from pynput.mouse import Controller as MouseController
 
 conf = json.load(open('settings/conf.json'))
 
@@ -40,6 +40,7 @@ class ClientDaemon:
 
     default_ping_wait = 5  # multiply by 2 to get max wait time
     ping_wait = default_ping_wait
+    password_len = conf['password_len']
     server_socket = (conf['server']['hostname'], conf['server']['port'])
     transmission_buffer = conf['transmission']['buffer']
     clt_conn = None
@@ -54,6 +55,8 @@ class ClientDaemon:
     pending_connections = None
 
     capture = None
+    keyboard: KeyController = None
+    mouse: MouseController = None
 
     main_window = None
 
@@ -128,7 +131,7 @@ class ClientDaemon:
                                         trans_clt.punch_udp_hole(public_sock, udp_pass)
 
                                         ping_logger.info("Receiving transmission data")
-                                        connection.transmission.receive_key(self.handle_key)
+                                        self.start_key_receiver(connection)
 
                                         ping_logger.info(f"Start sending Display to {trans_clt.transmission_target}")
                                         thread = threading.Thread(target=self.send_display, args=[connection])
@@ -174,7 +177,7 @@ class ClientDaemon:
                                         connection.transmission.receive_display(self.handle_display)
 
                                         ping_logger.info("Start sending keys")
-                                        thread = threading.Thread(target=self.send_keys, args=[connection])
+                                        thread = threading.Thread(target=self.start_gui, args=[connection])
                                         thread.start()
 
                                         # TODO: Start sending keys
@@ -232,19 +235,19 @@ class ClientDaemon:
             temp_id, temp_ip = temp.split()
             self.clt_id = temp_id
             self.clt_public_ip = temp_ip
-            self.clt_pass = secret.create_secret(2, alphabet=(True, True))  # TODO: Add conf
+            self.clt_pass = secret.create_secret(self.password_len, alphabet=(True, True))
             logging.getLogger('yard_client.reset').info(
                 "ID: %s === Password: %s === IP: %s" % (self.clt_id, self.clt_pass, self.clt_public_ip))
 
     def start(self, events: dict = None):
         main_logger = logging.getLogger('yard_client.main')
-        # Implement events
+        # TODO Implement events
         temp = self.clt.init()
         if temp:
             temp_id, temp_ip = temp.split()
             self.clt_id = temp_id
             self.clt_public_ip = temp_ip
-            self.clt_pass = secret.create_secret(2, alphabet=(True, True))  # TODO: Add conf
+            self.clt_pass = secret.create_secret(self.password_len, alphabet=(True, True))
             main_logger.info("ID: %s === Password: %s === IP: %s" % (self.clt_id, self.clt_pass, self.clt_public_ip))
         thread = threading.Thread(target=self.ping_loop)
         main_logger.debug("Client starts new thread")
@@ -278,44 +281,58 @@ class ClientDaemon:
 
     def handle_display(self, display: Tuple[dict, bytes, Any]):
         data = display[1]
-        img = cv2.imdecode(np.fromstring(data, dtype=np.uint8), 1)
-        img = Image.fromarray(img)
-        img = ImageTk.PhotoImage(image=img)
-        self.main_window.stream_frame.config(image=img)
-        self.main_window.stream_frame.image = img
+        try:
+            img = cv2.imdecode(np.fromstring(data, dtype=np.uint8), 1)
+            if img is not None:
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(img, mode="RGB")
+                img = ImageTk.PhotoImage(image=img)
+                self.main_window.stream_frame.config(image=img)
+                self.main_window.stream_frame.image = img
+        except Exception as e:
+            logging.getLogger('yard_client.receive_display').exception(e)
 
-    def handle_key(self, key):
-        print("Received DISPLAY")
+    def start_key_receiver(self, connection: ConnectionObj):
+        self.keyboard = KeyController()
+        self.mouse = MouseController()
+        connection.transmission.receive_key(self.handle_key)
 
-    def udp_loop(self, connection: ConnectionObj):
-        event = threading.Event
+    def handle_key(self, header: dict, key: Input, address: Any):
+        key_logger = logging.getLogger('yard_client.receive_key')   # TODO: Release key if to long
+        if isinstance(key, Key):
+            try:
+                if key.state:
+                    self.keyboard.press(key.get_command())
+                else:
+                    self.keyboard.release(key.get_command())
+            except ValueError as e:
+                key_logger.warning(f"Unknown Key: {e}")
+        elif isinstance(key, Mouse):
+            if key.coordinates:
+                self.mouse.position = key.coordinates
+                if key.scroll:
+                    self.mouse.scroll(*key.scroll)
+                elif key.get_command():
+                    self.mouse.press(key.get_command())
+                    if not key.drag:
+                        self.mouse.release(key.get_command())
 
-    def start_gui(self):
+    def start_gui(self, connection: ConnectionObj):
+
+        def send_keys(input_obj: Input):
+            nonlocal connection
+            connection.transmission.send_key(pickle.dumps(input_obj))
+
         if not self.main_window:
-            self.main_window = MainWindow()
+            self.main_window = MainWindow(send_keys)
             self.main_window.start()
-
-    def capture_screen(self):
-        img = self.capture.grab(self.capture.monitors[0])
-        return img
 
     def send_display(self, connection: ConnectionObj):
         self.capture = mss.mss()
         while True:
-            npdata = np.array(self.capture_screen())
-            connection.transmission.send_display(cv2.imencode('.jpg', npdata, [cv2.IMWRITE_JPEG_QUALITY, 30])[1])
-
-    def send_keys(self, connection: ConnectionObj):
-        thread = threading.Thread(target=self.start_gui)
-        thread.start()
-        i = 0
-        while True:
-            connection.transmission.send_key("Key data" + str(i))
-            time.sleep(1)
-            i += 1
-
-    def test_udp(self):
-        pass
+            img = np.array(self.capture.grab(self.capture.monitors[0]))
+            connection.transmission.send_display(cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 30])[1])
+            time.sleep(0.001)
 
     def create_udp_session(self) -> YardTransmission:
         clt_conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

@@ -5,11 +5,13 @@ import socket
 import logging
 import threading
 import time
+import traceback
 from typing import Union, Tuple, Any, Callable, Literal
 
 import cv2
 import numpy as np
 
+from objects.inputobj import Input
 from protocol import protocol
 
 
@@ -49,7 +51,7 @@ class YardTransmission:
         self.transmission_client.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, buffer)
         self.transmission_client.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, buffer)
         self.last_send = time.time()
-        self.sended = 0
+        self.sent = 0
 
     def get_public_sock(self):
         return self.public_sock
@@ -102,13 +104,14 @@ class YardTransmission:
         self.send(self.transmission_channel.CLOSE, "")
 
     def send_display(self, img: np.ndarray):
-        logging.getLogger('yard_client.transmission.send').debug(
-            f"Sending DISPLAY to {self.transmission_target}")
+        send_logger = logging.getLogger('yard_client.transmission.send')
+        send_logger.debug(f"Sending DISPLAY to {self.transmission_target}")
 
-        if time.time() - self.last_send > 1:
+        if time.time() - self.last_send > 10:
             self.last_send = time.time()
-            print("FPS", self.sended)
-            self.sended = 0
+            send_logger.debug(
+                f"Sending display with {self.sent // 10} FPS")
+            self.sent = 0
 
         data = img.tobytes()   # TODO Check if needed
         size = len(data)
@@ -120,9 +123,8 @@ class YardTransmission:
             pkg = pickle.dumps((i, data[array_pos_start:array_pos_end]))
             array_pos_start = array_pos_end
             self.send(self.transmission_channel.DISPLAY, pkg)
-            time.sleep(0.0000000001)
-
-        self.sended += 1
+            time.sleep(0.000001)
+        self.sent += 1
 
     def send_key(self, data):
         logging.getLogger('yard_client.transmission.send').debug(
@@ -135,13 +137,22 @@ class YardTransmission:
             f"Received {self.transmission_channel.types[pkg[0]['typ']]} message from {pkg[2]}:")
         callback(pkg)
 
-    def receive_key(self, callback: Callable[[Tuple[dict, bytes, Any]], Any]):
+    def receive_key(self, callback: Callable[[dict, Input, Any], Any]):
         def receive_parts():
             while not self.stopping or not self.receiving:
-                pkg = self.transmission_channel.receive(
-                    self.transmission_client)  # TODO: Check if correct address als top level like a filter bind udp to address maybe
-                header, payload, address = pkg
-                callback((header, payload, address))
+                pkg = None
+                try:
+                    pkg = self.transmission_channel.receive(
+                        self.transmission_client)
+                except Exception as e:
+                    logging.getLogger('yard_client.transmission.receive').warning(e)
+
+                if pkg:
+                    # TODO: Check if correct address als top level like a filter bind udp to address maybe
+                    header, payload, address = pkg
+                    if header['typ'] == self.transmission_channel.KEY:
+                        callback(header, pickle.loads(payload), address)  # TODO Could be dangerous pickle.loads
+
             self.receiving = False
 
         if not self.receiving:
@@ -173,7 +184,7 @@ class YardTransmission:
                     thread_part = threading.Thread(target=handle_parts, args=[pkg])
                     thread_part.start()
                 except Exception as e:
-                    print(e)
+                    logging.getLogger('yard_client.transmission.receive').exception(e)
 
             self.receiving = False
 

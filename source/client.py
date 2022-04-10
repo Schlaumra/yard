@@ -16,9 +16,6 @@ class ClientCLI:
         self.clt.connect()
         self.clt.start()
 
-    def start_udp(self):
-        self.clt.test_udp()
-
     def input_loop(self):
         cmd_logger = logging.getLogger('yard_client.cmd')
         while True:
@@ -34,8 +31,6 @@ class ClientCLI:
                                     break
                             case 'start':
                                 self.start_client()
-                            case 'start-udp':
-                                self.start_udp()
                             case 'help':
                                 print("This is help")
                             case 'connect':

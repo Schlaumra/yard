@@ -1,6 +1,6 @@
 {
   "server": {
-    "hostname": "192.168.73.152",
+    "hostname": "192.168.48.152",
     "port": 13331,
     "udp_port": 13333,
     "id_len": 8,
