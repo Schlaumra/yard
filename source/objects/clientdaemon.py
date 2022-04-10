@@ -40,7 +40,7 @@ class ClientDaemon:
 
     default_ping_wait = 5  # multiply by 2 to get max wait time
     ping_wait = default_ping_wait
-    password_len = conf['password_len']
+    password_len = conf['server']['password_len']
     server_socket = (conf['server']['hostname'], conf['server']['port'])
     transmission_buffer = conf['transmission']['buffer']
     clt_conn = None

@@ -32,21 +32,18 @@ class ClientCLI:
                             case 'start':
                                 self.start_client()
                             case 'help':
-                                print("This is help")
+                                print("YARD - Yet Another Remote Desktop")
+                                print("\nstart - connect to server(address in settings/conf.json) and get ID")
+                                print("\nconnect ID - connect to client and start Remote Desktop Transmission")
+                                print("\nreset - Reset connection")
+                                print("\nexit - Close Program")
                             case 'connect':
                                 if len(params) == 1:
                                     self.clt.connect_to_client(params[0])
                                 else:
                                     cmd_logger.warning(f"Connect needs only 1 parameter, {len(params)} were given")
-                            case 'send':
-                                if len(params) == 1:
-                                    self.clt.send_init_to_client(int(params[0]))
-                                else:
-                                    cmd_logger.warning(f"Send needs only 1 parameter, {len(params)} were given")
                             case 'reset':
                                 self.clt.reset()
-                            case 'print':
-                                cmd_logger.info(self.clt.connection_storage)
                             case _:
                                 cmd_logger.warning("Unknown command. Enter help to get help")
                     case _:
