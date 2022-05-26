@@ -2,6 +2,7 @@ import json
 import os
 import secrets
 import socket
+import ssl
 import time
 import uuid
 import logging
@@ -90,8 +91,20 @@ class YardClient:
         return package
 
     def connect(self):
-        logging.getLogger('yard_client.protocol.conn').info("Connecting to {}:{}".format(*self.control_socket))
+        connect_logger = logging.getLogger('yard_client.protocol.conn')
+        context = ssl.create_default_context()
+        # Load the self-signed cert
+        print(ssl.get_server_certificate(self.control_socket))
+        context.check_hostname = False
+
+        context.load_verify_locations(cadata=ssl.get_server_certificate(self.control_socket))
+
+        connect_logger.info("Connecting to {}:{}".format(*self.control_socket))
         self.control_client.connect(self.control_socket)
+
+        self.control_client = context.wrap_socket(self.control_client, server_hostname=self.control_socket[0])
+        connect_logger.info(f"Connected with {self.control_client.version()}")
+        connect_logger.debug(f"Added Certificate {self.control_client.getpeercert()}")  # ATTENTION: MiTM attack
         self.is_connected = True
 
     def send_init(self) -> str:

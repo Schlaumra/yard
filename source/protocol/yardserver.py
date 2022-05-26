@@ -1,5 +1,6 @@
 import logging
 import socket
+import ssl
 import threading
 import uuid
 from typing import Tuple, Union, Any, List, Dict
@@ -18,6 +19,9 @@ class YardServer:
     control_socket: Union[Tuple[Any, ...], str] = None
     control_server: socket.socket = None
     control_channel: YardControlChannel = None
+
+    cert_path: str = None
+    key_path: str = None
 
     transmission_socket: Union[Tuple[Any, ...], str] = None
     transmission_server: socket.socket = None
@@ -40,13 +44,18 @@ class YardServer:
     def __init__(self,
                  server_socket: Union[Tuple[Any, ...], str],
                  control_server: socket.socket,
-                 transmission_server: socket.socket):
+                 transmission_server: socket.socket,
+                 cert_path: str,
+                 key_path: str):
 
         logging.getLogger('yard_server.init').debug("Initializing Control server")
 
         self.control_socket = server_socket
         self.control_server = control_server
         self.control_channel = YardControlChannel()
+
+        self.cert_path = cert_path
+        self.key_path = key_path
 
         self.transmission_socket = server_socket
         self.transmission_server = transmission_server
@@ -353,6 +362,8 @@ class YardServer:
                 thread = threading.Thread(target=self.handle_client, args=(connection, address))
                 main_logger.debug("Control server starts new thread")
                 thread.start()
+        except ssl.SSLError as sslE:
+            main_logger.error(sslE)
         except Exception as e:
             main_logger.exception(e)
             self.stop()
@@ -417,6 +428,14 @@ class YardServer:
 
         self.control_server.listen()
         start_logger.info("Control server is now listening")
+
+        start_logger.info("Control server starting SSL/TLS wrapper")
+        # Create SSL Context for a server
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        # Load the public and private key
+        context.load_cert_chain(self.cert_path, self.key_path)
+        # Wrap socket in TLS
+        self.control_server = context.wrap_socket(self.control_server, server_side=True)
 
         start_logger.debug("Control server starts new thread")
         thread = threading.Thread(target=self.server_loop)
