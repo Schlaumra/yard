@@ -39,3 +39,8 @@ vm-build:
 	rm -fR ./*
 	cp -R ../../source/data ../../source/objects ../../source/display ../../source/protocol ../../source/settings ../../source/server.py .
 	python server.py
+
+vm-clear:
+	rm -fR ../client1/*
+	rm -fR ../client2/*
+	rm -fR ./*
