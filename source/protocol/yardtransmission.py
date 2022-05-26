@@ -1,17 +1,13 @@
-import hashlib
 import math
 import pickle
 import socket
 import logging
 import threading
 import time
-import traceback
 from typing import Union, Tuple, Any, Callable, Literal
 
-import cv2
 import numpy as np
 
-from objects.inputobj import Input
 from protocol import protocol
 
 
@@ -137,7 +133,7 @@ class YardTransmission:
             f"Received {self.transmission_channel.types[pkg[0]['typ']]} message from {pkg[2]}:")
         callback(pkg)
 
-    def receive_key(self, callback: Callable[[dict, Input, Any], Any]):
+    def receive_key(self, callback: Callable[[dict, 'Input', Any], Any]):
         def receive_parts():
             while not self.stopping or not self.receiving:
                 pkg = None

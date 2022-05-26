@@ -1,6 +1,6 @@
 {
   "server": {
-    "hostname": "192.168.1.29",
+    "hostname": "localhost",
     "port": 13331,
     "udp_port": 13333,
     "id_len": 8,

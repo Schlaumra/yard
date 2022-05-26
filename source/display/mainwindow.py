@@ -71,7 +71,7 @@ class MainWindow:
     def handle_mouse_click_event(self, event):
         key = Mouse(coordinates=(event.x, event.y), code=event.num, drag_release=True)
         self.stream_event_handler(key)
-        print("mouse click", event.num, event.x, event.y)
+        # print("mouse click", event.num, event.x, event.y)
 
     def handle_mouse_move_event(self, event):
         # print("mouse move", event.x, event.y)

@@ -22,7 +22,7 @@ class ClientStorage:
     def __init__(self):
         self.clients = {}
 
-    def get_client(self, client_id: str) -> Optional[ClientObj]:
+    def get_client(self, client_id: str) -> Optional['ClientObj']:
         """
         Get Client by id or None.
 
@@ -32,7 +32,7 @@ class ClientStorage:
 
         return self.clients.get(client_id, None)
 
-    def get_client_by_fingerprint(self, fingerprint: uuid.UUID) -> Optional[ClientObj]:
+    def get_client_by_fingerprint(self, fingerprint: uuid.UUID) -> Optional['ClientObj']:
         """
         Get client by fingerprint or return None.
 
@@ -44,7 +44,7 @@ class ClientStorage:
             if client.fingerprint == fingerprint:
                 return client
 
-    def get_client_by_socket(self, sock: socket.socket) -> Optional[ClientObj]:
+    def get_client_by_socket(self, sock: 'socket.socket') -> Optional['ClientObj']:
         """
         Get client by socket or return None.
 
@@ -56,7 +56,7 @@ class ClientStorage:
             if client.socket == sock:
                 return client
 
-    def add_client(self, client_id: str, fingerprint: uuid.UUID, online: bool, sock: socket.socket) -> ClientObj:
+    def add_client(self, client_id: str, fingerprint: uuid.UUID, online: bool, sock: socket.socket) -> 'ClientObj':
         """
         Add client to clients.
 
@@ -75,7 +75,7 @@ class ClientStorage:
     def create_client(self,
                       fingerprint: uuid.UUID,
                       *,
-                      sock: socket.socket = None) -> ClientObj:
+                      sock: socket.socket = None) -> 'ClientObj':
         """
         Create a client with given fingerprint and add it to the list.
 
@@ -105,10 +105,10 @@ class ClientStorage:
                       client_id: str,
                       *,
                       fingerprint: uuid.UUID = None,
-                      sessions: dict[int: SessionObj] = None,
+                      sessions: dict[int: 'SessionObj'] = None,
                       pending_packages: list[Tuple[int, list]] = None,
                       online: bool = None,
-                      sock: socket.socket = None) -> ClientObj:
+                      sock: socket.socket = None) -> 'ClientObj':
         """
         Update the client with the given client_id.
 
@@ -134,7 +134,7 @@ class ClientStorage:
             client.socket = sock
         return client
 
-    def pop_client(self, client_id: str) -> ClientObj:
+    def pop_client(self, client_id: str) -> 'ClientObj':
         """
         Pop client with given id.
 
@@ -244,6 +244,6 @@ class ConnectionStorage:
         x = [x for x in self.connections if x.session_id == ses]
         return x[0] if x else None
 
-    def get_connection_by_transmission(self, transmission: YardTransmission):
+    def get_connection_by_transmission(self, transmission: 'YardTransmission'):
         x = [x for x in self.connections if x.transmission == transmission]
         return x[0] if x else None
